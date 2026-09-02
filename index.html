@@ -1,240 +1,1589 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Elastic Vertex Destruction with TSL</title>
-    <meta name="author" content="Lolo Armdz for Codrops" />
-    <link rel="icon" type="image/svg+xml" href="https://tympanus.net/favicon/favicon.svg" />
-    <link rel="shortcut icon" href="https://tympanus.net/favicon/favicon.ico" />
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        overscroll-behavior: contain;
-        touch-action: none;
-      }
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a1e27">
+<title>今天吃什么？ — 食堂随机点菜器</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%BD%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-      html,
-      body {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-      }
+/* ── CSS Variables（DESIGN.md Airbnb 令牌 + 深色 hero 扩展） ── */
+:root {
+  /* 亮色主题（Airbnb 令牌） */
+  --canvas: #ffffff;
+  --ink: #222222;
+  --body-text: #3f3f3f;
+  --muted: #6a6a6a;
+  --muted-soft: #929292;
+  --hairline: #dddddd;
+  --hairline-soft: #ebebeb;
+  --surface-soft: #f7f7f7;
+  --surface-strong: #f2f2f2;
+  /* 品牌强调色（橙色替代 Rausch） */
+  --accent: #E8752A;
+  --accent-light: #F4B860;
+  --accent-active: #C45A1A;
+  --accent-soft: rgba(232, 117, 42, 0.12);
+  --on-accent: #ffffff;
+  /* 深色 hero（3D 展示区 + 兜底渐变） */
+  --dark-bg: #1a1e27;
+  --dark-bg-2: #2a2530;
+  --dark-surface: rgba(255, 255, 255, 0.08);
+  --dark-hairline: rgba(255, 255, 255, 0.14);
+  --dark-text: #f7f7f7;
+  --dark-muted: #8e8e8e;
+  /* 圆角（DESIGN.md rounded） */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 32px;
+  --r-full: 9999px;
+  /* 唯一阴影层级（DESIGN.md 单层阴影） */
+  --shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
+  /* 间距（4px 基准） */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+  /* 字体 */
+  --font-serif: 'Noto Serif SC', Georgia, serif;
+  --font-sans: 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  /* 布局 */
+  --nav-h: 60px;
+  --tabbar-h: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --content-max: 1280px;
+}
 
-      canvas {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-      }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--dark-bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
 
-      *,
-      *::after,
-      *::before {
-        box-sizing: border-box;
-      }
+/* ── Loading（main.js 移除 .loading 后淡入） ── */
+body.loading .nav, body.loading .tabbar, body.loading .content-layer { opacity: 0; }
+.nav, .tabbar, .content-layer { transition: opacity .45s ease .1s; }
 
-      :root {
-        font-size: 12px;
-        --color-text: #808080;
-        --color-bg: #1a1e27;
-        --color-link: #fff;
-        --color-link-hover: #fff;
-        --page-padding: 1.5rem;
-      }
+/* ── 3D Canvas (background layer) ── */
+canvas#canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: auto;
+}
 
-      body {
-        margin: 0;
-        color: var(--color-text);
-        background-color: var(--color-bg);
-        font-family: ui-monospace, monospace;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
+/* ── Content layer (above canvas) ── */
+.content-layer {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+.content-layer > * {
+  pointer-events: auto;
+}
 
-      @media (scripting: enabled) {
-        .loading {
-          &::before,
-          &::after {
-            content: '';
-            position: fixed;
-            z-index: 10000;
-          }
+/* ── Reveal animations ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible { opacity: 1; transform: none; }
 
-          &::before {
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--color-bg);
-          }
+/* ── View switching（body[data-view] 控制） ── */
+.view { display: none; }
+body[data-view="hero"]    .view-hero    { display: flex; }
+body[data-view="picker"]  .view-picker  { display: flex; }
+body[data-view="shops"]   .view-shops   { display: block; }
+body[data-view="history"] .view-history { display: block; }
 
-          &::after {
-            top: 50%;
-            left: 50%;
-            width: 100px;
-            height: 1px;
-            margin: 0 0 0 -50px;
-            background: var(--color-link);
-            animation: loaderAnim 1.5s ease-in-out infinite alternate forwards;
-          }
-        }
-      }
+/* ── Navigation（顶部导航，Airbnb top-nav 模式） ── */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 10000;
+  height: calc(var(--nav-h) + var(--safe-top));
+  padding: var(--safe-top) var(--sp-4) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.nav-logo {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: var(--sp-2) 0;
+}
+.nav-logo span { color: var(--accent); }
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+/* 移动端：隐藏视图链接，仅保留 BGM 图标按钮 */
+.nav-link[data-view] { display: none; }
+/* BGM 按钮：移动端圆形图标按钮 48×48 */
+#bgmBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  background: var(--surface-soft);
+  border: none;
+  border-radius: var(--r-full);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color .2s;
+}
+@media (hover: hover) {
+  #bgmBtn:hover { background: var(--surface-strong); }
+}
 
-      @keyframes loaderAnim {
-        0% {
-          transform: scaleX(0);
-          transform-origin: 0% 50%;
-        }
+/* ── Hero（深色 3D 展示区，透明底露出 canvas） ── */
+.hero {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  /* display 由视图切换规则控制（body[data-view="hero"] .view-hero） */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--nav-h) + var(--safe-top) + var(--sp-5)) var(--sp-4) var(--sp-6);
+  position: relative;
+  color: var(--dark-text);
+  background: radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.04) 0%, transparent 60%);
+}
+/* WebGPU 兜底：渐变只落在 hero 上（main.js 加 .no-webgpu class） */
+body.no-webgpu .hero {
+  background: radial-gradient(ellipse at center, var(--dark-bg-2) 0%, var(--dark-bg) 70%);
+}
+.hero-tagline {
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-light);
+  margin-bottom: var(--sp-4);
+  font-weight: 500;
+}
+.hero h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.9rem, 8vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-align: center;
+  margin-bottom: var(--sp-3);
+  text-shadow: 0 2px 24px rgba(0,0,0,0.6);
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent-light);
+}
+.hero-sub {
+  font-size: 1rem;
+  color: var(--dark-muted);
+  text-align: center;
+  margin-bottom: var(--sp-6);
+}
 
-        50% {
-          transform: scaleX(1);
-          transform-origin: 0% 50%;
-        }
+/* ── Scroll Indicator（移动端隐藏，≥744px 显示） ── */
+.scroll-indicator {
+  position: absolute;
+  bottom: var(--sp-6);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  min-width: 48px;
+  min-height: 48px;
+  cursor: pointer;
+  z-index: 5;
+  background: none;
+  border: none;
+}
+.scroll-hint {
+  font-size: 0.82rem;
+  color: var(--dark-text);
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.scroll-arrow {
+  font-size: 1.4rem;
+  color: var(--accent);
+  animation: scroll-bounce 1.6s ease-in-out infinite;
+}
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50% { transform: translateY(8px); opacity: 1; }
+}
 
-        50.1% {
-          transform: scaleX(1);
-          transform-origin: 100% 50%;
-        }
+/* ── Picker Panel（亮色视图，安全居中：内容超高时可滚动不裁剪） ── */
+.picker-panel {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  /* display 由视图切换规则控制（body[data-view="picker"] .view-picker） */
+  flex-direction: column;
+  align-items: center;
+  padding: calc(var(--nav-h) + var(--safe-top) + var(--sp-5)) var(--sp-4) calc(var(--tabbar-h) + var(--safe-bottom) + var(--sp-5));
+  position: relative;
+  z-index: 1;
+  background: var(--canvas);
+}
+.view-picker .panel-label { margin-top: auto; }
+.view-picker .picker-section { margin-bottom: auto; }
+.panel-label {
+  font-size: 0.82rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.panel-label::before, .panel-label::after {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 1px;
+  background: var(--accent);
+}
 
-        100% {
-          transform: scaleX(0);
-          transform-origin: 100% 50%;
-        }
-      }
+/* ── 3D hint（移动端隐藏，≥744px 显示） ── */
+.canvas-hint {
+  position: fixed;
+  top: calc(var(--nav-h) + var(--safe-top) + var(--sp-4));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: var(--sp-2) var(--sp-4);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--dark-hairline);
+  border-radius: var(--r-full);
+  font-size: 0.7rem;
+  color: var(--dark-muted);
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  display: none;
+}
+.canvas-hint span { color: var(--accent-light); }
 
-      a {
-        text-decoration: none;
-        color: var(--color-link);
-        outline: none;
-        cursor: pointer;
+/* ── Cafeteria Tabs（分段控件，≥48px 触控目标） ── */
+.cafeteria-tabs {
+  display: flex;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto var(--sp-5);
+  padding: var(--sp-1);
+  gap: var(--sp-1);
+  background: var(--surface-soft);
+  border-radius: var(--r-md);
+}
+.cafeteria-tab {
+  flex: 1;
+  min-height: 48px;
+  padding: var(--sp-2) var(--sp-3);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+  transition: color 0.3s, background-color 0.3s;
+}
+.cafeteria-tab.active {
+  background: var(--canvas);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+.cafeteria-tab:active { transform: scale(0.98); }
+@media (hover: hover) {
+  .cafeteria-tab:hover:not(.active) { background: var(--surface-strong); }
+}
+/* 深色上下文（hero 内） */
+.hero .cafeteria-tabs {
+  background: var(--dark-surface);
+  border: 1px solid var(--dark-hairline);
+}
+.hero .cafeteria-tab { color: var(--dark-muted); }
+.hero .cafeteria-tab.active {
+  background: var(--canvas);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+@media (hover: hover) {
+  .hero .cafeteria-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.12); }
+}
 
-        &:hover {
-          text-decoration: underline;
-          color: var(--color-link-hover);
-        }
+/* ── Picker Display（流式宽度，替代 320px 固定宽） ── */
+.picker-section {
+  text-align: center;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 0;
+  width: 100%;
+}
+.picker-display {
+  width: 100%;
+  max-width: 360px;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--sp-5);
+  overflow: visible;
+}
+.picker-placeholder {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  color: var(--muted);
+  opacity: 0.7;
+}
 
-        &:focus {
-          outline: none;
-          background: lightgrey;
+/* ── Ticket (Uiverse.io, adapted)——流式化：em 内部结构不变，宽度随容器缩放 ── */
+.ticket-wrapper {
+  --t-bg: rgba(30, 30, 32, 0.97);
+  --t-bg-light: rgba(40, 40, 42, 0.97);
+  --t-accent: #E8752A;
+  --t-accent-glow: rgba(232, 117, 42, 0.5);
+  --t-text-main: #F5F0E8;
+  --t-text-muted: #8A8078;
+  font-size: min(11px, 3.1vw);
+  width: min(28em, 100%);
+  perspective: 1000px;
+  display: inline-block;
+}
+.ticket {
+  position: relative;
+  width: 100%;
+  color: var(--t-text-main);
+  font-family: var(--font-sans);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  filter: drop-shadow(0px 0px 10px rgba(0, 0, 0, 0.4));
+  background: transparent;
+}
+/* ── shimmer sweep ── */
+.ticket::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 1em;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 60%,
+    transparent 100%
+  );
+  z-index: 10;
+  background-size: 250% 250%;
+  background-position: 100% 100%;
+  transition: background-position 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  mix-blend-mode: overlay;
+}
+.ticket-wrapper:hover .ticket::after {
+  background-position: 0% 0%;
+}
+/* ── main body ── */
+.t-main {
+  padding: 2em;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(
+      circle at bottom left,
+      transparent 1em,
+      var(--t-bg) 1.05em
+    ),
+    radial-gradient(circle at bottom right, transparent 1em, var(--t-bg) 1.05em);
+  background-size: 51% 100%;
+  background-position: bottom left, bottom right;
+  background-repeat: no-repeat;
+  border-top-left-radius: 1em;
+  border-top-right-radius: 1em;
+}
+.t-main::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(232, 117, 42, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 117, 42, 0.1) 1px, transparent 1px);
+  background-size: 2em 2em;
+  opacity: 0.5;
+  z-index: 0;
+  pointer-events: none;
+  transform: perspective(500px) rotateX(20deg) scale(1.5);
+  animation: ticket-grid-scroll 20s linear infinite;
+}
+@keyframes ticket-grid-scroll {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 4em; }
+}
+.t-content { position: relative; z-index: 1; }
+.t-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2em;
+}
+.t-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-weight: 700;
+  font-size: 1.2em;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+.t-logo svg {
+  width: 1.5em; height: 1.5em;
+  fill: var(--t-accent);
+  filter: drop-shadow(0 0 5px var(--t-accent));
+  animation: ticket-logo-pulse 3s ease-in-out infinite alternate;
+}
+@keyframes ticket-logo-pulse {
+  0%   { filter: drop-shadow(0 0 2px var(--t-accent)); }
+  100% { filter: drop-shadow(0 0 10px var(--t-accent)) brightness(1.2); }
+}
+.t-type {
+  font-size: 0.6em;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--t-accent);
+  border: 1px solid var(--t-accent);
+  padding: 0.4em 0.8em;
+  border-radius: 99em;
+  font-weight: 700;
+}
+.t-title {
+  font-size: 2.5em;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-bottom: 0.2em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #fff 0%, #f4b860 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.t-subtitle {
+  color: var(--t-text-muted);
+  font-size: 0.9em;
+  margin-bottom: 2em;
+}
+.t-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5em;
+  margin-bottom: 1em;
+}
+.t-detail-item { display: flex; flex-direction: column; gap: 0.2em; }
+.t-label {
+  font-size: 0.6em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--t-text-muted);
+}
+.t-value {
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--t-text-main);
+}
+/* ── perforation ── */
+.t-perforation {
+  display: flex;
+  justify-content: space-between;
+  height: 1em;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+.t-perf-line {
+  flex-grow: 1;
+  height: 0;
+  border-top: 2px dashed rgba(255, 255, 255, 0.15);
+  margin: 0 1.5em;
+}
+/* ── stub ── */
+.t-stub {
+  padding: 2em;
+  background: radial-gradient(
+      circle at top left,
+      transparent 1em,
+      var(--t-bg-light) 1.05em
+    ),
+    radial-gradient(circle at top right, transparent 1em, var(--t-bg-light) 1.05em);
+  background-size: 51% 100%;
+  background-position: top left, top right;
+  background-repeat: no-repeat;
+  border-bottom-left-radius: 1em;
+  border-bottom-right-radius: 1em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+.t-barcode-container { display: flex; flex-direction: column; gap: 0.5em; }
+.t-barcode {
+  width: 10em; height: 3em;
+  background: repeating-linear-gradient(
+    90deg,
+    #fff 0, #fff 2px, transparent 2px, transparent 4px,
+    #fff 4px, #fff 5px, transparent 5px, transparent 8px,
+    #fff 8px, #fff 12px, transparent 12px, transparent 15px,
+    #fff 15px, #fff 16px, transparent 16px, transparent 18px
+  );
+  opacity: 0.7;
+}
+.t-barcode-id {
+  font-family: monospace;
+  font-size: 0.7em;
+  color: var(--t-text-muted);
+  letter-spacing: 0.2em;
+}
+.t-admit { text-align: right; }
+.t-admit-text {
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--t-text-muted);
+}
+.t-admit-num {
+  font-size: 2.8em;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--t-accent);
+  text-shadow: 0 0 15px var(--t-accent-glow);
+}
+/* ── click feedback ── */
+.ticket-wrapper:active .ticket {
+  transform: scale(0.97);
+}
+.loader {
+  position: relative;
+  width: 120px;
+  height: 90px;
+  margin: 10px auto;
+  display: none;
+}
+.loader.show { display: block; }
+.loader:before {
+  content: "";
+  position: absolute;
+  bottom: 30px;
+  left: 50px;
+  height: 30px;
+  width: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: loading-bounce 0.5s ease-in-out infinite alternate;
+}
+.loader:after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 7px;
+  width: 45px;
+  border-radius: 4px;
+  box-shadow: 0 5px 0 rgba(0,0,0,0.08), -35px 50px 0 rgba(0,0,0,0.08), -70px 95px 0 rgba(0,0,0,0.08);
+  animation: loading-step 1s ease-in-out infinite;
+}
+@keyframes loading-bounce {
+  0%   { transform: scale(1, 0.7); }
+  40%  { transform: scale(0.8, 1.2); }
+  60%  { transform: scale(1, 1); }
+  100% { bottom: 140px; }
+}
+@keyframes loading-step {
+  0% {
+    box-shadow: 0 10px 0 rgba(0,0,0,0),
+                0 10px 0 rgba(0,0,0,0.12),
+                -35px 50px 0 rgba(0,0,0,0.12),
+                -70px 90px 0 rgba(0,0,0,0.12);
+  }
+  100% {
+    box-shadow: 0 10px 0 rgba(0,0,0,0.12),
+                -35px 50px 0 rgba(0,0,0,0.12),
+                -70px 90px 0 rgba(0,0,0,0.12),
+                -70px 90px 0 rgba(0,0,0,0);
+  }
+}
 
-          &:not(:focus-visible) {
-            background: transparent;
-          }
+/* ── Toggle Switch (Uiverse.io) ── */
+.toggle-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.toggle-label {
+  font-size: 0.9rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+.toggle-container {
+  --knob-size: 1.75em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 64px;
+  min-height: 48px;
+  position: relative;
+  cursor: pointer;
+}
+.toggle-container.rolling { pointer-events: none; }
+.toggle-input {
+  position: absolute;
+  z-index: 2;
+  bottom: 132.5%;
+  border-radius: 50%;
+  transform: rotate(-25deg);
+  transform-origin: 50% 4.75em;
+  width: var(--knob-size);
+  height: var(--knob-size);
+  opacity: 0;
+  font: inherit;
+  transition: transform .24s cubic-bezier(.65, 1.35, .5, 1);
+  cursor: pointer;
+}
+.toggle-input:checked { transform: rotate(25deg); }
+.toggle-handle-wrapper {
+  position: absolute;
+  z-index: 1;
+  bottom: -135%;
+  -webkit-mask-image: linear-gradient(to bottom, #000 62.125%, transparent 50%);
+  mask-image: linear-gradient(to bottom, #000 62.125%, transparent 50%);
+  width: 200%;
+  overflow: hidden;
+}
+.toggle-handle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: rotate(-25deg);
+  transform-origin: bottom center;
+  transition: transform .24s cubic-bezier(.65, 1.35, .5, 1);
+}
+.toggle-input:checked + .toggle-handle-wrapper > .toggle-handle { transform: rotate(25deg); }
+.toggle-handle-knob {
+  position: relative; z-index: 1;
+  border-radius: 50%;
+  width: var(--knob-size); height: var(--knob-size);
+  background-image: radial-gradient(farthest-corner at 70% 30%, #fedee2 4%, #d63534 12% 24%, #a81a1a 50% 65%, #d63534 75%);
+  transition: transform .24s cubic-bezier(.65, 1.35, .5, 1);
+}
+.toggle-input:checked + .toggle-handle-wrapper .toggle-handle-knob { transform: rotate(-90deg); }
+.toggle-handle-knob::after {
+  content: ''; position: absolute; top: 0; left: 0;
+  border-radius: inherit; width: 100%; height: 100%;
+  box-shadow: inset 0 0 8px 2px rgb(255 255 255 / .4);
+  opacity: 0; transition: opacity .2s;
+}
+@media (hover: hover) {
+  .toggle-input:hover + .toggle-handle-wrapper .toggle-handle-knob::after,
+  .toggle-input:focus-visible + .toggle-handle-wrapper .toggle-handle-knob::after { opacity: 1; }
+}
+.toggle-handle-bar-wrapper { position: relative; width: .5em; height: 3em; }
+.toggle-handle-bar {
+  position: absolute;
+  top: calc(var(--knob-size) / 2 * -1); left: 0;
+  width: 100%; height: calc(100% + var(--knob-size) / 2);
+  background-image: linear-gradient(to right, #777475, #a4a4a4, #fff 45% 55%, #a4a4a4, #777475);
+  background-position-x: .06125em;
+  transition: background-position-x .24s cubic-bezier(.65, 1.35, .5, 1);
+  box-shadow: inset 0 1em .25em rgb(0 0 0 / .4);
+}
+.toggle-input:checked + .toggle-handle-wrapper .toggle-handle-bar { background-position-x: -.06125em; }
+.toggle-base {
+  position: relative;
+  border-radius: 3.125em; padding: .25em;
+  width: 3.5em; height: 1.125em;
+  background-color: #fff;
+  background-image: linear-gradient(to bottom, #fff, #d7d7d7);
+  box-shadow: 0 -.25em .5em #fff, 0 .25em .5em #d7d7d7;
+}
+.toggle-base-inside {
+  position: relative; border-radius: inherit;
+  width: 100%; height: 100%;
+  background-image: linear-gradient(to bottom, #a6a6a6, #7d7d7d);
+  box-shadow: inset 0 .0625em rgb(255 255 255 / .2), inset 0 -.03125em rgb(255 255 255 / 1), inset 0 -.0625em .25em rgb(0 0 0 / .1);
+}
+.toggle-base-inside::after {
+  content: ''; position: absolute; border-radius: inherit;
+  width: 100%; height: 100%;
+  background-image: linear-gradient(to bottom, #5ab054, #438c3c);
+  box-shadow: inherit; opacity: 0;
+  transition: opacity .24s cubic-bezier(.65, 1.35, .5, 1);
+}
+.toggle-input:checked ~ .toggle-base .toggle-base-inside::after { opacity: 1; }
 
-          &:focus-visible {
-            outline: 2px solid red;
-            background: transparent;
-          }
-        }
-      }
+/* ── Shop Cards Grid（亮色视图 + 粘性食堂分段控件） ── */
+.shops-section {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding: calc(var(--nav-h) + var(--safe-top) + var(--sp-4)) 0 calc(var(--tabbar-h) + var(--safe-bottom) + var(--sp-7));
+  position: relative;
+  z-index: 1;
+  background: var(--canvas);
+  border-top: 1px solid var(--hairline-soft);
+}
+.shops-subheader {
+  position: sticky;
+  top: calc(var(--nav-h) + var(--safe-top));
+  z-index: 5;
+  background: var(--canvas);
+  padding: var(--sp-2) var(--sp-4) var(--sp-3);
+}
+.shops-subheader .cafeteria-tabs { margin-bottom: 0; }
+.shops-header { max-width: var(--content-max); margin: var(--sp-5) auto var(--sp-6); text-align: center; padding: 0 var(--sp-4); }
+.section-label {
+  font-size: 0.78rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--accent);
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px; justify-content: center;
+}
+.section-label::before, .section-label::after {
+  content: ''; display: block; width: 24px; height: 1px; background: var(--accent);
+}
+.section-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.4rem, 4vw, 1.75rem);
+  font-weight: 600; margin-bottom: var(--sp-2);
+  color: var(--ink);
+}
+.shops-count { font-size: 0.8rem; color: var(--muted); }
+/* 网格：移动端 1 列，断点处只减列数（DESIGN.md 策略） */
+.shops-grid {
+  max-width: var(--content-max); margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-4);
+}
+.shop-card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--r-md);
+  text-align: left;
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: default;
+  overflow: hidden;
+}
+@media (hover: hover) {
+  .shop-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+}
+/* ── Photo area (Airbnb property-card) ── */
+.shop-card-photo {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--surface-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shop-card-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.shop-card-emoji {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+/* ── Meta area ── */
+.shop-card-meta {
+  padding: var(--sp-4);
+}
+.shop-card h3 {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: var(--sp-1);
+  color: var(--ink);
+}
+.shop-card .dish-name {
+  font-size: 14px;
+  color: var(--body-text);
+  margin-bottom: var(--sp-3);
+}
+.shop-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.shop-card .price {
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.shop-card .category-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--accent-soft);
+  border-radius: var(--r-full);
+  font-size: 0.68rem;
+  color: var(--accent);
+}
+/* ── 空状态（二/三食堂暂无数据） ── */
+.shops-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--sp-8) var(--sp-5);
+  background: var(--surface-soft);
+  border-radius: var(--r-md);
+  color: var(--muted);
+}
+.shops-empty-icon { font-size: 3rem; margin-bottom: var(--sp-3); opacity: 0.7; }
+.shops-empty h3 { font-family: var(--font-serif); font-size: 1.3rem; color: var(--ink); margin-bottom: var(--sp-2); }
+.shops-empty p { font-size: 0.88rem; }
 
-      .frame {
-        padding: 3rem var(--page-padding) 0;
-        display: grid;
-        z-index: 1000;
-        position: relative;
-        grid-row-gap: 1rem;
-        grid-column-gap: 2rem;
-        pointer-events: none;
-        justify-items: start;
-        grid-template-columns: auto auto;
-        grid-template-areas:
-          'title'
-          'back'
-          'archive'
-          'github'
-          'tags'
-          'sponsor';
+/* ── History Section（亮色视图） ── */
+.history-section {
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding: calc(var(--nav-h) + var(--safe-top) + var(--sp-6)) var(--sp-4) calc(var(--tabbar-h) + var(--safe-bottom) + var(--sp-7));
+  position: relative;
+  z-index: 1;
+  background: var(--canvas);
+  border-top: 1px solid var(--hairline-soft);
+}
+.history-container { max-width: 700px; margin: 0 auto; }
+.history-list { display: flex; flex-direction: column; gap: var(--sp-3); margin-top: var(--sp-6); }
+.history-item {
+  display: flex; align-items: center; gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding: var(--sp-4);
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--r-md);
+  animation: fadeIn 0.4s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: none; }
+}
+.history-num {
+  font-family: var(--font-serif); font-size: 1.4rem;
+  font-weight: 700; color: var(--accent);
+  min-width: 40px; text-align: center;
+}
+.history-content { flex: 1; min-width: 0; }
+.history-content .shop { font-weight: 500; font-size: 0.95rem; color: var(--ink); }
+.history-content .detail { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+.history-content .cafeteria-tag {
+  display: inline-block; padding: 2px 10px;
+  background: var(--accent-soft); border-radius: var(--r-full);
+  font-size: 0.68rem; color: var(--accent); margin-top: var(--sp-1);
+}
+/* 移动端允许换行：时间戳独占一行，避免挤压内容 */
+.history-time {
+  font-size: 0.68rem; color: var(--muted); white-space: nowrap;
+  flex-basis: 100%; margin-left: 56px;
+}
+.history-empty { text-align: center; color: var(--muted); padding: var(--sp-7) var(--sp-4); font-size: 0.9rem; }
+.history-clear {
+  display: block; margin: var(--sp-5) auto 0;
+  min-height: 48px; padding: 0 var(--sp-5);
+  background: transparent; border: 1px solid var(--hairline);
+  color: var(--muted); font-family: var(--font-sans);
+  font-size: 0.82rem; cursor: pointer;
+  border-radius: var(--r-sm); transition: border-color 0.3s, color 0.3s;
+}
+@media (hover: hover) {
+  .history-clear:hover { border-color: #e74c3c; color: #e74c3c; }
+}
 
-        #cdawrap {
-          justify-self: start;
-          grid-area: sponsor;
-        }
+/* ── Footer ── */
+.footer {
+  padding: var(--sp-7) var(--sp-4) calc(var(--sp-7) + var(--tabbar-h) + var(--safe-bottom));
+  text-align: center;
+  border-top: 1px solid var(--hairline-soft);
+  position: relative; z-index: 1;
+  background: var(--canvas);
+}
+.footer p { font-size: 0.72rem; color: var(--muted); }
+.footer .edit-hint { margin-top: var(--sp-2); font-size: 0.68rem; color: var(--accent); opacity: 0.7; }
 
-        a,
-        button {
-          pointer-events: auto;
-        }
+/* ── Bottom Tab Bar（移动端主导航） ── */
+.tabbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 10000;
+  display: flex;
+  background: var(--canvas);
+  border-top: 1px solid var(--hairline-soft);
+  padding: var(--sp-2) var(--sp-2) calc(var(--sp-2) + var(--safe-bottom));
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.03);
+}
+.tabbar-btn {
+  flex: 1;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.tabbar-btn .tabbar-icon { font-size: 22px; line-height: 1; }
+.tabbar-btn.is-active { color: var(--ink); font-weight: 600; }
+.tabbar-btn.is-active .tabbar-icon { color: var(--accent); }
+@media (hover: hover) {
+  .tabbar-btn:hover { color: var(--ink); }
+}
 
-        .frame__title {
-          grid-area: title;
-          font-size: inherit;
-          margin: 0;
-        }
+/* ── Breakpoints（DESIGN.md：<744 移动 / 744–1128 平板 / 1128+ 桌面 / >1440 宽屏） ── */
+@media (min-width: 744px) {
+  :root { --nav-h: 80px; }
+  /* 顶部导航：显示视图链接（Airbnb 下划线激活态） */
+  .nav-link[data-view] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 var(--sp-4);
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+  }
+  .nav-link[data-view].is-active { color: var(--ink); }
+  .nav-link[data-view].is-active::after {
+    content: '';
+    position: absolute;
+    left: var(--sp-4); right: var(--sp-4); bottom: 2px;
+    height: 2px;
+    background: var(--ink);
+    border-radius: 1px;
+  }
+  /* BGM 按钮回归文本按钮形态 */
+  #bgmBtn {
+    width: auto;
+    padding: 0 var(--sp-4);
+    border-radius: var(--r-sm);
+    background: transparent;
+  }
+  /* 底部 tab 栏隐藏，内容区移除 tabbar 避让 */
+  .tabbar { display: none; }
+  .picker-panel { padding-bottom: var(--sp-8); }
+  .shops-section { padding-bottom: var(--sp-8); }
+  .history-section { padding-bottom: var(--sp-8); }
+  .footer { padding-bottom: var(--sp-7); }
+  /* 侧边留白加大 */
+  .nav { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+  .hero { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+  .picker-panel { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+  .shops-subheader { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+  .shops-grid { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+  .history-section { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+  /* 网格 2 列 / 滚动指示器与 3D 提示恢复 */
+  .shops-grid { grid-template-columns: repeat(2, 1fr); }
+  .scroll-indicator { display: flex; }
+  .canvas-hint { display: block; }
+}
+@media (min-width: 1128px) {
+  .shops-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 1440px) {
+  .shops-grid { grid-template-columns: repeat(4, 1fr); }
+}
 
-        .frame__back {
-          grid-area: back;
-          justify-self: start;
-        }
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .scroll-arrow, .t-main::after, .ticket svg, .history-item { animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body class="loading" data-view="hero">
 
-        .frame__archive {
-          grid-area: archive;
-          justify-self: start;
-        }
+<!-- Three.js Canvas (background) -->
+<canvas id="canvas"></canvas>
 
-        .frame__github {
-          grid-area: github;
-        }
+<!-- 3D interaction hint -->
+<div class="canvas-hint" id="canvasHint">🖱️ <span>鼠标划过</span> 3D 文字试试</div>
 
-        .frame__tags {
-          grid-area: tags;
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
+<!-- Content layer -->
+<div class="content-layer">
 
-        @media screen and (min-width: 53em) {
-          padding: var(--page-padding);
-          height: 100%;
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          grid-template-columns: auto auto auto auto 1fr;
-          grid-template-rows: auto auto;
-          align-content: space-between;
-          grid-template-areas:
-            'title back github archive ...'
-            'tags tags tags sponsor sponsor';
+<!-- Navigation -->
+<nav class="nav">
+  <button class="nav-logo" id="navLogo" aria-label="回到首页">🍽️ 今天吃<span>什么</span></button>
+  <div class="nav-links">
+    <button class="nav-link" data-view="picker">🎰 抽奖</button>
+    <button class="nav-link" data-view="shops">🏪 店铺</button>
+    <button class="nav-link" data-view="history">📋 历史</button>
+    <button class="nav-link icon-only" id="bgmBtn" onclick="toggleBGM()" title="背景音乐" aria-label="背景音乐开关">🔇</button>
+  </div>
+</nav>
 
-          .frame__tags {
-            align-self: end;
-          }
+<!-- Hero -->
+<section class="hero view view-hero" id="top">
+  <div class="hero-tagline">选择困难症的救星</div>
+  <h1>今天<em>吃什么</em>？</h1>
+  <p class="hero-sub">交给命运，告别纠结</p>
 
-          #cdawrap {
-            justify-self: end;
-            text-align: right;
-            max-width: 300px;
-          }
-        }
-      }
-    </style>
-  </head>
-  <body class="loading">
-    <canvas id="canvas"></canvas>
-    <header class="frame">
-      <h1 class="frame__title">
-        Interactive Text Destruction by
-        <a href="http://nuevosmiedos.xyz" target="_blank">Lolo Armdz</a>
-      </h1>
-      <a class="frame__back" href="https://tympanus.net/codrops/?p=96654">Tutorial</a>
-      <a class="frame__archive" href="https://tympanus.net/codrops/demos/">All demos</a>
-      <a class="frame__github" href="https://github.com/armdz/tsl_elastic_vertex_destruction">Code</a>
-      <nav class="frame__tags">
-        <a href="https://tympanus.net/codrops/demos/?tag=webgpu">#webgpu</a>
-        <a href="https://tympanus.net/codrops/demos/?tag=three-js">#three.js</a>
-        <a href="https://tympanus.net/codrops/demos/?tag=tsl">#tsl</a>
-        <a href="https://tympanus.net/codrops/demos/?tag=typography">#typography</a>
-      </nav>
-    </header>
-    <script type="module" src="./src/main.js"></script>
-  </body>
+  <!-- Cafeteria Tabs -->
+  <div class="cafeteria-tabs reveal" id="cafeteriaTabs">
+    <button class="cafeteria-tab active" data-cafeteria="一食堂">🍴 一食堂</button>
+    <button class="cafeteria-tab" data-cafeteria="二食堂">🍜 二食堂</button>
+    <button class="cafeteria-tab" data-cafeteria="三食堂">🍛 三食堂</button>
+  </div>
+
+  <!-- Scroll indicator -->
+  <div class="scroll-indicator" data-view="picker">
+    <span class="scroll-hint">开始抽奖</span>
+    <div class="scroll-arrow">↓</div>
+  </div>
+</section>
+
+<!-- ====== Panel 2: Picker ====== -->
+<section class="picker-panel view view-picker" id="pickerPanel">
+  <div class="panel-label reveal" id="panelLabel">🎰 抽奖区</div>
+  <!-- Cafeteria Tabs (2nd instance) -->
+  <div class="cafeteria-tabs reveal">
+    <button class="cafeteria-tab" data-cafeteria="一食堂">🍴 一食堂</button>
+    <button class="cafeteria-tab" data-cafeteria="二食堂">🍜 二食堂</button>
+    <button class="cafeteria-tab" data-cafeteria="三食堂">🍛 三食堂</button>
+  </div>
+  <!-- Random Picker -->
+  <div class="picker-section reveal">
+    <div class="picker-display" id="pickerDisplay">
+      <!-- 初始占位 -->
+      <span class="picker-placeholder" id="pickerPlaceholder">拨动下方开关开始</span>
+      <div class="loader" id="pickerLoader"></div>
+      <!-- 票据（抽中后显示） -->
+      <div class="ticket-wrapper" id="ticketWrapper" style="display:none">
+        <div class="ticket">
+          <div class="t-main">
+            <div class="t-content">
+              <div class="t-header">
+                <div class="t-logo">
+                  <svg viewBox="0 0 24 24"><path d="M11 2a1 1 0 0 1 1 1v1h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1v1a5 5 0 0 1-5 5h-1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1a5 5 0 0 1 5-5h1v-1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3V3a1 1 0 0 1 1-1z"/></svg>
+                  <span>今天吃什么</span>
+                </div>
+                <div class="t-type" id="ticketCafeteria">一食堂</div>
+              </div>
+              <div class="t-title" id="ticketShop">---</div>
+              <div class="t-subtitle" id="ticketDish">---</div>
+              <div class="t-details">
+                <div class="t-detail-item">
+                  <span class="t-label">分类</span>
+                  <span class="t-value" id="ticketCategory">---</span>
+                </div>
+                <div class="t-detail-item">
+                  <span class="t-label">价格</span>
+                  <span class="t-value" id="ticketPrice">---</span>
+                </div>
+                <div class="t-detail-item">
+                  <span class="t-label">食堂</span>
+                  <span class="t-value" id="ticketCafeteriaDetail">---</span>
+                </div>
+                <div class="t-detail-item">
+                  <span class="t-label">日期</span>
+                  <span class="t-value" id="ticketDate">---</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="t-perforation">
+            <div class="t-perf-line"></div>
+          </div>
+          <div class="t-stub">
+            <div class="t-barcode-container">
+              <div class="t-barcode"></div>
+              <div class="t-barcode-id">CAFE • MEAL • TICKET</div>
+            </div>
+            <div class="t-admit">
+              <div class="t-admit-text">今天吃</div>
+              <div class="t-admit-num" id="ticketPriceBig">---</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="toggle-wrapper">
+      <label class="toggle-label">拨动开关开始随机</label>
+      <label class="toggle-container" id="toggleContainer" for="toggleStart">
+        <input type="checkbox" class="toggle-input" id="toggleStart" onchange="startRoll()">
+        <div class="toggle-handle-wrapper">
+          <div class="toggle-handle">
+            <div class="toggle-handle-knob"></div>
+            <div class="toggle-handle-bar-wrapper">
+              <div class="toggle-handle-bar"></div>
+            </div>
+          </div>
+        </div>
+        <div class="toggle-base">
+          <div class="toggle-base-inside"></div>
+        </div>
+      </label>
+    </div>
+  </div>
+</section>
+
+<!-- Shops Grid -->
+<section class="shops-section view view-shops" id="shops">
+  <div class="shops-subheader">
+    <div class="cafeteria-tabs">
+      <button class="cafeteria-tab" data-cafeteria="一食堂">🍴 一食堂</button>
+      <button class="cafeteria-tab" data-cafeteria="二食堂">🍜 二食堂</button>
+      <button class="cafeteria-tab" data-cafeteria="三食堂">🍛 三食堂</button>
+    </div>
+  </div>
+  <div class="shops-header">
+    <div class="section-label">当前食堂</div>
+    <h2 class="section-title" id="shopsTitle">一食堂 · 全部店铺</h2>
+    <p class="shops-count" id="shopsCount">共 0 家店铺</p>
+  </div>
+  <div class="shops-grid" id="shopsGrid"></div>
+</section>
+
+<!-- History -->
+<section class="history-section view view-history" id="history">
+  <div class="history-container">
+    <div class="section-label">历史记录</div>
+    <h2 class="section-title" style="text-align:center">最近抽中的</h2>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">还没有记录，快去抽一次吧！🎲</div>
+    </div>
+    <button class="history-clear" id="clearHistoryBtn">清空记录</button>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <p>🍽️ 食堂随机点菜器 · 告别选择困难</p>
+  <p class="edit-hint">💡 打开 HTML 找到 MENU_DATA 改成你学校的真实店铺</p>
+</footer>
+
+</div><!-- /content-layer -->
+
+<!-- Bottom Tab Bar (mobile) -->
+<nav class="tabbar" id="tabbar" aria-label="主导航">
+  <button class="tabbar-btn" data-view="picker" aria-controls="pickerPanel">
+    <span class="tabbar-icon" aria-hidden="true">🎰</span>
+    <span class="tabbar-label">抽奖</span>
+  </button>
+  <button class="tabbar-btn" data-view="shops" aria-controls="shops">
+    <span class="tabbar-icon" aria-hidden="true">🏪</span>
+    <span class="tabbar-label">店铺</span>
+  </button>
+  <button class="tabbar-btn" data-view="history" aria-controls="history">
+    <span class="tabbar-icon" aria-hidden="true">📋</span>
+    <span class="tabbar-label">历史</span>
+  </button>
+</nav>
+
+<script type="module" src="./src/main.js"></script>
+<script>
+// ============================================================================
+// 📝 在这里修改你的食堂和店铺数据！
+// ============================================================================
+const MENU_DATA = {
+  "一食堂": [
+    { shop: "炖肉小哥盖浇饭", dish: "香扒肉沫茄子饭", price: "¥9", category: "盖浇饭", icon: "🍛", image: "images/17.jpg" },
+    { shop: "干锅烤盘饭", dish: "奥尔良大鸡腿烤盘饭", price: "¥13", category: "烤盘饭", icon: "🥘", image: "images/16.jpg" },
+    { shop: "米掌门煲仔饭·辣椒炒肉", dish: "招牌辣椒炒肉煲仔饭", price: "¥13", category: "煲仔饭", icon: "🍚", image: "images/15.jpg" },
+    { shop: "好口味粉面", dish: "麻酱拌粉/面", price: "¥6", category: "粉面", icon: "🍜", image: "images/14.jpg" },
+    { shop: "洛小微无骨烤鱼饭·香肉拌饭", dish: "香辣烤鱼饭", price: "¥13", category: "烤鱼饭", icon: "🐟", image: "images/13.jpg" },
+    { shop: "周牛牛重庆鲜烧牛肉面", dish: "招牌牛肉面", price: "¥13", category: "汤面", icon: "🍜", image: "images/12.jpg" },
+    { shop: "隆江猪脚饭", dish: "正宗隆江猪脚饭", price: "¥14", category: "卤饭", icon: "🍖", image: "images/07.jpg" },
+    { shop: "金厨添麻辣烫", dish: "招牌称重麻辣烫", price: "¥1.78/50克", category: "麻辣烫", icon: "🥘", image: "images/08.jpg" },
+    { shop: "食力派营养套餐饭", dish: "一荤一素套餐", price: "¥9", category: "快餐", icon: "🍱", image: "images/06.jpg" },
+    { shop: "鲜粉传奇牛肉牛杂面酸辣粉", dish: "正宗酸辣粉", price: "¥9", category: "酸辣粉", icon: "🍜", image: "images/05.jpg" },
+    { shop: "炙烤牛肉饭", dish: "玫瑰香嫩护心肉饭", price: "¥13", category: "烤肉饭", icon: "🥩", image: "images/04.jpg" },
+    { shop: "饺多多", dish: "双拼肥汁米线", price: "¥14", category: "米线", icon: "🍜", image: "images/03.jpg" },
+    { shop: "上海糖水粥铺", dish: "黑米粥", price: "¥3起", category: "粥品糖水", icon: "🍯", image: "images/02.jpg" },
+    { shop: "沙县小吃", dish: "牛肉炒饭", price: "¥13", category: "炒饭", icon: "🍳", image: "images/01.jpg" },
+    { shop: "潇湘风味档", dish: "精品自选湘菜", price: "¥5", category: "自选快餐", icon: "🍱", image: "images/10.jpg" },
+    { shop: "勝記卤肉饭", dish: "台湾卤肉饭", price: "¥12", category: "卤饭", icon: "🍖", image: "images/11.jpg" },
+    { shop: "基本大活窗口", dish: "一荤一素", price: "¥7", category: "饭", icon: "🍱", image: "images/09.jpg" },
+  ],
+  "二食堂": [],
+  "三食堂": []
+};
+
+// ============================================================================
+// 🔧 核心逻辑
+// ============================================================================
+
+let currentCafeteria = "一食堂";
+let isRolling = false;
+let rollTimer = null;
+
+// ── Audio system (Web Audio API) ──
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playBeep(freq, duration, type = 'sine', vol = 0.08) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) { /* mute if error */ }
+}
+function sfxTab() { playBeep(800, 0.06, 'sine', 0.04); }
+function sfxToggle() { playBeep(200, 0.1, 'triangle', 0.06); playBeep(400, 0.06, 'triangle', 0.04); }
+function sfxTick()  { playBeep(1200 + Math.random() * 400, 0.03, 'square', 0.03); }
+function sfxResult() {
+  playBeep(523, 0.12, 'sine', 0.07);
+  setTimeout(() => playBeep(659, 0.12, 'sine', 0.07), 100);
+  setTimeout(() => playBeep(784, 0.2, 'sine', 0.08), 200);
+}
+
+// ── BGM (user audio) ──
+const bgm = new Audio('Park%20Bird%20-%20Birb%20March.mp3');
+bgm.volume = 0.4;
+let bgmStarted = false;
+let bgmMuted = false;
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button, a, .cafeteria-tab, .nav-link, .scroll-indicator, .toggle-container');
+  if (!el) return;
+  if (!bgmStarted) {
+    bgm.play().catch(() => {});
+    bgmStarted = true;
+    document.getElementById('bgmBtn').textContent = '🎵';
+  }
+});
+
+function toggleBGM() {
+  if (!bgmStarted) {
+    bgm.play().catch(() => {});
+    bgmStarted = true;
+    document.getElementById('bgmBtn').textContent = '🎵';
+    return;
+  }
+  bgmMuted = !bgmMuted;
+  bgm.muted = bgmMuted;
+  document.getElementById('bgmBtn').textContent = bgmMuted ? '🔇' : '🎵';
+}
+
+// ── Cached DOM refs ──
+const $ = (id) => document.getElementById(id);
+const toggleEl = $('toggleStart');
+const toggleContainer = $('toggleContainer');
+const pickerDisplay = $('pickerDisplay');
+const pickerPlaceholder = $('pickerPlaceholder');
+const pickerLoader = $('pickerLoader');
+const ticketWrapper = $('ticketWrapper');
+const ticketCafeteria = $('ticketCafeteria');
+const ticketShop = $('ticketShop');
+const ticketDish = $('ticketDish');
+const ticketCategory = $('ticketCategory');
+const ticketPrice = $('ticketPrice');
+const ticketCafeteriaDetail = $('ticketCafeteriaDetail');
+const ticketDate = $('ticketDate');
+const ticketPriceBig = $('ticketPriceBig');
+const shopsGrid = $('shopsGrid');
+const shopsTitle = $('shopsTitle');
+const shopsCount = $('shopsCount');
+const panelLabel = $('panelLabel');
+const historyList = $('historyList');
+
+// ── View Switching（底部 tab 栏 / 顶部导航 / logo / 滚动指示器共用） ──
+function switchView(view) {
+  document.body.dataset.view = view;
+  document.querySelectorAll('.nav-link[data-view], .tabbar-btn[data-view]')
+    .forEach(b => {
+      const on = b.dataset.view === view;
+      b.classList.toggle('is-active', on);
+      if (on) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  sfxTab();
+}
+document.addEventListener('click', (e) => {
+  const switcher = e.target.closest('[data-view]');
+  if (switcher) switchView(switcher.dataset.view);
+});
+$('navLogo').addEventListener('click', () => switchView('hero'));
+$('clearHistoryBtn').addEventListener('click', clearHistory);
+
+// ── Cafeteria Tab Switching（委托 + 多实例同步） ──
+function syncCafeteriaTabs() {
+  document.querySelectorAll('.cafeteria-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.cafeteria === currentCafeteria));
+}
+document.addEventListener('click', (e) => {
+  const tab = e.target.closest('.cafeteria-tab');
+  if (!tab || isRolling) return;
+  const cafeteria = tab.dataset.cafeteria;
+  if (cafeteria === currentCafeteria) return;
+
+  currentCafeteria = cafeteria;
+  syncCafeteriaTabs();
+  sfxTab();
+
+  resetPicker();
+  renderShopCards();
+  shopsTitle.textContent = cafeteria + ' · 全部店铺';
+  shopsCount.textContent = MENU_DATA[cafeteria].length
+    ? '共 ' + MENU_DATA[cafeteria].length + ' 家店铺'
+    : '菜单整理中';
+  panelLabel.textContent = '🎰 抽奖区 · ' + cafeteria;
+});
+
+// ── Render Shop Cards ──
+function renderShopCards() {
+  const shops = MENU_DATA[currentCafeteria];
+  if (!shops.length) {
+    shopsGrid.innerHTML = `
+      <div class="shops-empty">
+        <div class="shops-empty-icon">🍽️</div>
+        <h3>敬请期待</h3>
+        <p>「${currentCafeteria}」菜单正在整理中，先去一食堂看看吧</p>
+      </div>`;
+    return;
+  }
+  shopsGrid.innerHTML = shops.map((s, i) => `
+    <div class="shop-card reveal" style="transition-delay: ${i * 0.05}s">
+      <div class="shop-card-photo">
+        ${s.image ? `<img src="${s.image}" alt="${s.shop}" loading="lazy">` : `<span class="shop-card-emoji">${s.icon}</span>`}
+      </div>
+      <div class="shop-card-meta">
+        <h3>${s.shop}</h3>
+        <div class="dish-name">🔥 ${s.dish}</div>
+        <div class="shop-card-footer">
+          <span class="price">${s.price}</span>
+          <span class="category-tag">${s.category}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.reveal:not(.visible)').forEach(el => revealObs.observe(el));
+}
+
+// ── Random Picker ──
+function startRoll() {
+  if (isRolling) {
+    toggleEl.checked = false;
+    return;
+  }
+  const shops = MENU_DATA[currentCafeteria];
+  // 空食堂守卫（修复原空数组崩溃：shops[NaN] → undefined.shop）
+  if (!shops.length) {
+    pickerPlaceholder.textContent = '该食堂暂无店铺，敬请期待';
+    pickerPlaceholder.style.display = 'block';
+    toggleEl.checked = false;
+    sfxTab();
+    return;
+  }
+  isRolling = true;
+  sfxToggle();
+
+  toggleContainer.classList.add('rolling');
+  pickerPlaceholder.style.display = 'none';
+  ticketWrapper.style.display = 'none';
+  pickerLoader.classList.add('show');
+
+  let count = 0;
+  const totalFlashes = 20;
+  let interval = 50;
+
+  function flash() {
+    const randomShop = shops[Math.floor(Math.random() * shops.length)];
+    // show flickering text in placeholder during roll
+    pickerPlaceholder.textContent = randomShop.shop + ' · ' + randomShop.dish;
+    pickerPlaceholder.style.display = 'block';
+    sfxTick();
+    count++;
+
+    if (count >= totalFlashes) {
+      clearTimeout(rollTimer);
+      const final = shops[Math.floor(Math.random() * shops.length)];
+      pickerLoader.classList.remove('show');
+      pickerPlaceholder.style.display = 'none';
+
+      // populate ticket
+      ticketCafeteria.textContent = currentCafeteria;
+      ticketCafeteriaDetail.textContent = currentCafeteria;
+      ticketShop.textContent = final.shop;
+      ticketDish.textContent = '🔥 ' + final.dish;
+      ticketCategory.textContent = final.category;
+      ticketPrice.textContent = final.price;
+      ticketPriceBig.textContent = final.price;
+      ticketDate.textContent = new Date().toLocaleDateString('zh-CN');
+      ticketWrapper.style.display = 'inline-block';
+      sfxResult();
+
+      addHistory(final, currentCafeteria);
+
+      toggleContainer.classList.remove('rolling');
+      toggleEl.checked = false;
+      isRolling = false;
+      return;
+    }
+
+    if (count < 8) interval = 60;
+    else if (count < 13) interval = 100;
+    else if (count < 17) interval = 160;
+    else interval = 250;
+
+    rollTimer = setTimeout(flash, interval);
+  }
+
+  flash();
+}
+
+function resetPicker() {
+  toggleContainer.classList.remove('rolling');
+  toggleEl.checked = false;
+  pickerLoader.classList.remove('show');
+  ticketWrapper.style.display = 'none';
+  pickerPlaceholder.style.display = 'block';
+  pickerPlaceholder.textContent = '拨动下方开关开始';
+}
+
+// ── History ──
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('cafeteria-picker-history') || '[]'); }
+  catch { return []; }
+}
+
+function addHistory(shop, cafeteria) {
+  const history = getHistory();
+  history.unshift({
+    shop: shop.shop, dish: shop.dish, price: shop.price,
+    cafeteria: cafeteria, icon: shop.icon,
+    time: new Date().toLocaleString('zh-CN')
+  });
+  localStorage.setItem('cafeteria-picker-history', JSON.stringify(history.slice(0, 30)));
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = getHistory();
+  if (history.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">还没有记录，快去抽一次吧！🎲</div>';
+    return;
+  }
+  historyList.innerHTML = history.map((h, i) => `
+    <div class="history-item" style="animation-delay: ${i * 0.03}s">
+      <div class="history-num">#${i + 1}</div>
+      <div class="history-content">
+        <div class="shop">${h.icon} ${h.shop}</div>
+        <div class="detail">🔥 ${h.dish} · ${h.price}</div>
+        <span class="cafeteria-tag">📍 ${h.cafeteria}</span>
+      </div>
+      <div class="history-time">${h.time}</div>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  if (confirm('确定要清空所有历史记录吗？')) {
+    localStorage.removeItem('cafeteria-picker-history');
+    renderHistory();
+  }
+}
+
+// ── IntersectionObserver ──
+const revealObs = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) { entry.target.classList.add('visible'); revealObs.unobserve(entry.target); }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' }) : null;
+
+// ── Init ──
+function init() {
+  renderShopCards();
+  renderHistory();
+  syncCafeteriaTabs();
+  shopsCount.textContent = '共 ' + MENU_DATA["一食堂"].length + ' 家店铺';
+  panelLabel.textContent = '🎰 抽奖区 · 一食堂';
+  if (revealObs) document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+  else document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
+  // 刷新后回到 hero 视图，而不是浏览器记住的滚动位置
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  window.scrollTo(0, 0);
+}
+init();
+</script>
+</body>
 </html>
