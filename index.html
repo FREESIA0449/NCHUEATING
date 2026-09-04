@@ -1061,10 +1061,92 @@ body.no-webgpu .hero {
   .shops-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
+/* ── 进入欢迎弹窗（Uiverse 噪点渐变卡片，粉色系） ── */
+body.no-scroll { overflow: hidden; }
+
+.welcome-overlay {
+  position: fixed; inset: 0; z-index: 10001;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--sp-4);
+  background: rgba(26, 30, 39, 0.55);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  animation: welcome-fade 0.3s ease;
+}
+.welcome-overlay[hidden] { display: none; }
+@keyframes welcome-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.welcome-card {
+  position: relative;
+  width: min(320px, 100%);
+  padding: var(--sp-6) var(--sp-5);
+  border-radius: var(--r-lg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  animation: welcome-pop 0.45s cubic-bezier(0.25, 1, 0.5, 1);
+}
+@keyframes welcome-pop { from { opacity: 0; transform: translateY(14px) scale(0.97); } }
+
+.welcome-card-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 100%, #f3ecde 20%, #e581a2 40% 50%, #fce3ec 55%) no-repeat center / auto;
+  filter: url(#welcome-noise);
+}
+
+.welcome-title {
+  position: relative;
+  font-family: var(--font-serif);
+  font-size: 32px; font-weight: 600; line-height: 1.1;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, #e581a2 0%, #ffb4c8 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0px 4px 12px rgba(229, 129, 162, 0.25));
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.welcome-desc {
+  position: relative;
+  margin-top: var(--sp-3);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px; font-weight: 300; text-align: center;
+  line-height: 1.7; letter-spacing: 0.04em;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.welcome-douyin { font-weight: 700; color: #ffffff; }
+
+.welcome-btn {
+  position: relative;
+  display: block;
+  margin: var(--sp-4) auto 0;
+  padding: var(--sp-2) var(--sp-5);
+  border: none; border-radius: var(--r-full);
+  background: #ffffff;
+  color: #d15f8a;
+  font-family: var(--font-sans);
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.25s;
+}
+.welcome-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22); }
+.welcome-btn:active { transform: translateY(0) scale(0.97); }
+
+/* 桌面悬浮动效（原组件语言），触屏设备跳过 */
+@media (hover: hover) {
+  .welcome-card:hover .welcome-title {
+    letter-spacing: -0.01em;
+    filter: drop-shadow(0px 8px 16px rgba(229, 129, 162, 0.4));
+    transform: translateY(-2px);
+  }
+  .welcome-card:hover .welcome-desc { letter-spacing: 0.08em; color: #ffffff; transform: translateY(-2px); }
+}
+
 /* ── Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
   .scroll-arrow, .t-main::after, .ticket svg, .history-item { animation: none !important; }
+  .welcome-overlay, .welcome-card, .welcome-title, .welcome-desc, .welcome-btn { transition: none !important; animation: none !important; }
   html { scroll-behavior: auto; }
 }
 </style>
@@ -1248,6 +1330,26 @@ body.no-webgpu .hero {
     <span class="tabbar-label">历史</span>
   </button>
 </nav>
+
+<!-- 进入欢迎弹窗（Uiverse 噪点渐变卡片，粉色系） -->
+<div class="welcome-overlay" id="welcomeOverlay" hidden>
+  <svg width="0" height="0" aria-hidden="true"><defs>
+    <filter id="welcome-noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0"/>
+    </filter>
+  </defs></svg>
+  <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <div class="welcome-card-bg"></div>
+    <h2 class="welcome-title" id="welcomeTitle">重要提示</h2>
+    <p class="welcome-desc">
+      本网页为昌航学子免费提供，可以的话求个关注。<br>
+      主播抖音：<span class="welcome-douyin">FR1ESIA</span><br>
+      如果你花了钱获得这个网站说明被骗了！！！
+    </p>
+    <button class="welcome-btn" id="welcomeBtn">我知道了</button>
+  </div>
+</div>
 
 <script type="module" src="./src/main.js"></script>
 <script>
@@ -1598,6 +1700,20 @@ const revealObs = ('IntersectionObserver' in window) ? new IntersectionObserver(
   });
 }, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' }) : null;
 
+// ── 进入欢迎弹窗 ──
+const welcomeOverlay = document.getElementById('welcomeOverlay');
+const welcomeBtn = document.getElementById('welcomeBtn');
+let welcomeClosed = false;
+function closeWelcome() {
+  if (welcomeClosed) return;
+  welcomeClosed = true;
+  welcomeOverlay.hidden = true;
+  document.body.classList.remove('no-scroll');
+}
+welcomeBtn.addEventListener('click', closeWelcome);
+welcomeOverlay.addEventListener('click', (e) => { if (e.target === welcomeOverlay) closeWelcome(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWelcome(); });
+
 // ── Init ──
 function init() {
   renderShopCards();
@@ -1610,6 +1726,13 @@ function init() {
   // 刷新后回到 hero 视图，而不是浏览器记住的滚动位置
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.scrollTo(0, 0);
+  // 进入网站弹窗：等首屏 UI 淡入后再弹出
+  setTimeout(() => {
+    if (!welcomeClosed) {
+      welcomeOverlay.hidden = false;
+      document.body.classList.add('no-scroll');
+    }
+  }, 600);
 }
 init();
 </script>
