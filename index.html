@@ -1530,7 +1530,7 @@ let bgmMuted = false;
 function getBgm() {
   if (!bgm) {
     bgm = new Audio('Park%20Bird%20-%20Birb%20March.mp3');
-    bgm.volume = 0.08;
+    bgm.volume = 1.0; // 音量已固化进 mp3 文件本身（约 8%），JS 不再二次衰减
     bgm.preload = 'none';
   }
   return bgm;

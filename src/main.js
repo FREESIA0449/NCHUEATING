@@ -280,6 +280,27 @@ function init() {
   });
   renderer.setAnimationLoop(animate);
 
+  // ── 视口拟合（窄屏拉远相机，避免 3D 文字被左右裁切） ──
+  // 桌面基准：相机 z=4.5、雾 far=10 → 文字处雾化因子 (10-4.5)/10 = 0.55
+  const FIT_MARGIN = 0.92;        // 文字最多占视口宽度 92%，两侧留白
+  const FIT_MIN_Z = 4.5;          // 相机距离下限（桌面/横屏零回归）
+  const FIT_MAX_Z = 12;           // 相机距离上限（极端窄屏不再无限拉远）
+  const FOG_FAR_RATIO = 10 / 4.5; // fog.far / camera.z，维持雾化因子恒为 0.55
+
+  function fitTextToViewport() {
+    // boundingBox 在文字创建处已 computeBoundingBox；translate 只居中不改变宽度
+    const halfW = 0.5 * (text_geo.boundingBox.max.x - text_geo.boundingBox.min.x);
+    const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    // 可见半宽 = tan(fov/2) × z × aspect，反解出恰好容纳文字的距离
+    const zNeeded = halfW / (tanHalfFov * camera.aspect);
+    camera.position.z = zNeeded <= FIT_MIN_Z
+      ? FIT_MIN_Z
+      : Math.min(zNeeded / FIT_MARGIN, FIT_MAX_Z);
+    // 线性雾（near=0）：文字处雾化因子 = (far - z) / far，far 随 z 等比放大保持 0.55
+    scene.fog.far = Math.max(10, camera.position.z * FOG_FAR_RATIO);
+  }
+  fitTextToViewport();
+
   // ── Resize（visualViewport：移动端地址栏收展不拉伸 canvas） ──
   const vv = window.visualViewport;
   function onResize() {
@@ -288,6 +309,7 @@ function init() {
     camera.aspect = sizes.width / sizes.height;
     camera.updateProjectionMatrix();
     renderer.setSize(sizes.width, sizes.height);
+    fitTextToViewport(); // aspect 变化后重新拟合相机距离与雾
   }
   (vv || window).addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onResize);
