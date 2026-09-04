@@ -609,6 +609,77 @@ body.no-webgpu .hero {
 .ticket-wrapper:active .ticket {
   transform: scale(0.97);
 }
+
+/* ── 小票 3D 翻转（点击查看店铺图片） ── */
+.ticket-flip {
+  position: relative;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1);
+  cursor: pointer;
+  outline: none;
+}
+.ticket-flip.flipped { transform: rotateY(180deg); }
+.ticket-flip:focus-visible { box-shadow: 0 0 0 3px var(--t-accent-glow); border-radius: 1em; }
+.ticket-flip .ticket { backface-visibility: hidden; }
+
+.ticket-back {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+  border-radius: 1em;
+  overflow: hidden;
+  background: var(--t-bg);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+.ticket-back-photo {
+  flex: 1;
+  min-height: 0;
+  background: var(--t-bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ticket-back-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ticket-back-emoji { font-size: 4rem; opacity: 0.5; }
+.ticket-back-info {
+  padding: 1.5em 2em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ticket-back-shop {
+  font-family: var(--font-serif);
+  font-size: 1.8em;
+  font-weight: 600;
+  color: var(--t-text-main);
+}
+.ticket-back-dish { font-size: 1.1em; color: var(--t-text-muted); }
+.ticket-back-price {
+  font-size: 1.4em;
+  font-weight: 700;
+  color: var(--t-accent);
+}
+
+.ticket-flip-hint {
+  margin-top: 1em;
+  text-align: center;
+  font-size: 0.9em;
+  color: var(--t-text-muted);
+  opacity: 0.85;
+  user-select: none;
+}
+.ticket-flip.flipped ~ .ticket-flip-hint { display: none; }
 .loader {
   position: relative;
   width: 120px;
@@ -1147,6 +1218,7 @@ body.no-scroll { overflow: hidden; }
   .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
   .scroll-arrow, .t-main::after, .ticket svg, .history-item { animation: none !important; }
   .welcome-overlay, .welcome-card, .welcome-title, .welcome-desc, .welcome-btn { transition: none !important; animation: none !important; }
+  .ticket-flip { transition: none !important; }
   html { scroll-behavior: auto; }
 }
 </style>
@@ -1210,52 +1282,66 @@ body.no-scroll { overflow: hidden; }
       <div class="loader" id="pickerLoader"></div>
       <!-- 票据（抽中后显示） -->
       <div class="ticket-wrapper" id="ticketWrapper" style="display:none">
-        <div class="ticket">
-          <div class="t-main">
-            <div class="t-content">
-              <div class="t-header">
-                <div class="t-logo">
-                  <svg viewBox="0 0 24 24"><path d="M11 2a1 1 0 0 1 1 1v1h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1v1a5 5 0 0 1-5 5h-1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1a5 5 0 0 1 5-5h1v-1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3V3a1 1 0 0 1 1-1z"/></svg>
-                  <span>今天吃什么</span>
+        <div class="ticket-flip" id="ticketFlip" role="button" tabindex="0" aria-label="点击翻转查看店铺图片">
+          <div class="ticket">
+            <div class="t-main">
+              <div class="t-content">
+                <div class="t-header">
+                  <div class="t-logo">
+                    <svg viewBox="0 0 24 24"><path d="M11 2a1 1 0 0 1 1 1v1h3a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1v1a5 5 0 0 1-5 5h-1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-1a5 5 0 0 1 5-5h1v-1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3V3a1 1 0 0 1 1-1z"/></svg>
+                    <span>今天吃什么</span>
+                  </div>
+                  <div class="t-type" id="ticketCafeteria">一食堂</div>
                 </div>
-                <div class="t-type" id="ticketCafeteria">一食堂</div>
-              </div>
-              <div class="t-title" id="ticketShop">---</div>
-              <div class="t-subtitle" id="ticketDish">---</div>
-              <div class="t-details">
-                <div class="t-detail-item">
-                  <span class="t-label">分类</span>
-                  <span class="t-value" id="ticketCategory">---</span>
-                </div>
-                <div class="t-detail-item">
-                  <span class="t-label">价格</span>
-                  <span class="t-value" id="ticketPrice">---</span>
-                </div>
-                <div class="t-detail-item">
-                  <span class="t-label">食堂</span>
-                  <span class="t-value" id="ticketCafeteriaDetail">---</span>
-                </div>
-                <div class="t-detail-item">
-                  <span class="t-label">日期</span>
-                  <span class="t-value" id="ticketDate">---</span>
+                <div class="t-title" id="ticketShop">---</div>
+                <div class="t-subtitle" id="ticketDish">---</div>
+                <div class="t-details">
+                  <div class="t-detail-item">
+                    <span class="t-label">分类</span>
+                    <span class="t-value" id="ticketCategory">---</span>
+                  </div>
+                  <div class="t-detail-item">
+                    <span class="t-label">价格</span>
+                    <span class="t-value" id="ticketPrice">---</span>
+                  </div>
+                  <div class="t-detail-item">
+                    <span class="t-label">食堂</span>
+                    <span class="t-value" id="ticketCafeteriaDetail">---</span>
+                  </div>
+                  <div class="t-detail-item">
+                    <span class="t-label">日期</span>
+                    <span class="t-value" id="ticketDate">---</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div class="t-perforation">
-            <div class="t-perf-line"></div>
-          </div>
-          <div class="t-stub">
-            <div class="t-barcode-container">
-              <div class="t-barcode"></div>
-              <div class="t-barcode-id">CAFE • MEAL • TICKET</div>
+            <div class="t-perforation">
+              <div class="t-perf-line"></div>
             </div>
-            <div class="t-admit">
-              <div class="t-admit-text">今天吃</div>
-              <div class="t-admit-num" id="ticketPriceBig">---</div>
+            <div class="t-stub">
+              <div class="t-barcode-container">
+                <div class="t-barcode"></div>
+                <div class="t-barcode-id">CAFE • MEAL • TICKET</div>
+              </div>
+              <div class="t-admit">
+                <div class="t-admit-text">今天吃</div>
+                <div class="t-admit-num" id="ticketPriceBig">---</div>
+              </div>
+            </div>
+          </div>
+          <div class="ticket-back" aria-hidden="true">
+            <div class="ticket-back-photo">
+              <img id="ticketBackImg" alt="" loading="lazy">
+              <span class="ticket-back-emoji" id="ticketBackEmoji" hidden></span>
+            </div>
+            <div class="ticket-back-info">
+              <div class="ticket-back-shop" id="ticketBackShop">---</div>
+              <div class="ticket-back-dish" id="ticketBackDish">---</div>
+              <div class="ticket-back-price" id="ticketBackPrice">---</div>
             </div>
           </div>
         </div>
+        <div class="ticket-flip-hint">👆 点击小票查看店铺图片</div>
       </div>
     </div>
     <div class="toggle-wrapper">
@@ -1489,6 +1575,12 @@ const ticketPrice = $('ticketPrice');
 const ticketCafeteriaDetail = $('ticketCafeteriaDetail');
 const ticketDate = $('ticketDate');
 const ticketPriceBig = $('ticketPriceBig');
+const ticketFlip = $('ticketFlip');
+const ticketBackImg = $('ticketBackImg');
+const ticketBackEmoji = $('ticketBackEmoji');
+const ticketBackShop = $('ticketBackShop');
+const ticketBackDish = $('ticketBackDish');
+const ticketBackPrice = $('ticketBackPrice');
 const shopsGrid = $('shopsGrid');
 const shopsTitle = $('shopsTitle');
 const shopsCount = $('shopsCount');
@@ -1620,6 +1712,21 @@ function startRoll() {
       ticketPrice.textContent = final.price;
       ticketPriceBig.textContent = final.price;
       ticketDate.textContent = new Date().toLocaleDateString('zh-CN');
+      // 翻转背面：店铺图片 + 信息（无图店铺回退 emoji）
+      ticketBackShop.textContent = final.shop;
+      ticketBackDish.textContent = '🔥 ' + final.dish;
+      ticketBackPrice.textContent = final.price;
+      if (final.image) {
+        ticketBackImg.src = final.image;
+        ticketBackImg.alt = final.shop;
+        ticketBackImg.hidden = false;
+        ticketBackEmoji.hidden = true;
+      } else {
+        ticketBackImg.hidden = true;
+        ticketBackEmoji.hidden = false;
+        ticketBackEmoji.textContent = final.icon;
+      }
+      ticketFlip.classList.remove('flipped');
       ticketWrapper.style.display = 'inline-block';
       sfxResult();
 
@@ -1647,9 +1754,19 @@ function resetPicker() {
   toggleEl.checked = false;
   pickerLoader.classList.remove('show');
   ticketWrapper.style.display = 'none';
+  ticketFlip.classList.remove('flipped');
   pickerPlaceholder.style.display = 'block';
   pickerPlaceholder.textContent = '拨动下方开关开始';
 }
+
+// 点击小票翻转查看店铺图片（键盘 Enter/空格同样可触发）
+ticketFlip.addEventListener('click', () => ticketFlip.classList.toggle('flipped'));
+ticketFlip.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    ticketFlip.classList.toggle('flipped');
+  }
+});
 
 // ── History ──
 function getHistory() {
