@@ -46,22 +46,42 @@ const Resources = {
   font: undefined,
 };
 
+let settled = false;
+
+function fallback() {
+  if (document.body.classList.contains('no-webgpu')) return;
+  document.body.classList.add('no-webgpu');
+  const canvas = document.getElementById('canvas');
+  if (canvas) canvas.style.display = 'none';
+  const hint = document.querySelector('.canvas-hint');
+  if (hint) hint.style.display = 'none';
+}
+
 function preload() {
-  // 安全兜底：字体加载挂起时，8s 后强制移除 loading，避免页面永久隐藏
-  setTimeout(() => document.body.classList.remove('loading'), 8000);
+  // UI 立即可见：3D 字体改为后台加载，不再阻塞首屏
+  document.body.classList.remove('loading');
+  // 无 WebGPU 直接走静态渐变兜底，不下载 1.5MB 的 3D 字体
+  if (!navigator.gpu) { fallback(); return; }
+  // 3D 就绪前隐藏"拖动旋转"提示，场景建好后再显示
+  const hint = document.querySelector('.canvas-hint');
+  if (hint) hint.style.display = 'none';
+  // 字体加载挂起兜底：8s 后转为静态渐变背景
+  const timer = setTimeout(() => { if (!settled) { settled = true; fallback(); } }, 8000);
   const _font_loader = new FontLoader();
   _font_loader.load(
     './assets/Times New Roman_Regular.json',
     (font) => {
+      settled = true;
+      clearTimeout(timer);
       Resources.font = font;
       init();
     },
     undefined, // onProgress
     (err) => {
+      settled = true;
+      clearTimeout(timer);
       console.error('Font loading failed:', err);
-      document.body.classList.remove('loading');
-      document.querySelector('.canvas-hint').style.display = 'none';
-      document.body.classList.add('no-webgpu');
+      fallback();
     }
   );
 }
@@ -78,11 +98,8 @@ function init() {
   // WebGPU support check
   if (!navigator.gpu) {
     console.warn('WebGPU not supported in this browser. Falling back to static background.');
-    const canvas = document.getElementById('canvas');
-    if (canvas) canvas.style.display = 'none';
-    document.querySelector('.canvas-hint').style.display = 'none';
     // 渐变只落在 hero 深色区（CSS: body.no-webgpu .hero），亮色内容区保持白色
-    document.body.classList.add('no-webgpu');
+    fallback();
     return;
   }
 
@@ -274,6 +291,11 @@ function init() {
   }
   (vv || window).addEventListener('resize', onResize);
   window.addEventListener('orientationchange', onResize);
+
+  // 场景就绪：恢复"拖动旋转 · 点击爆炸"提示
+  const hint = document.querySelector('.canvas-hint');
+  if (hint) hint.style.display = '';
 }
 
-window.onload = preload;
+// 模块脚本在 DOM 解析后执行，直接启动（window.onload 会等 mp3/图片等资源，白白拖慢首屏）
+preload();

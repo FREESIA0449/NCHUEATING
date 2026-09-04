@@ -8,7 +8,8 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%BD%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet"></noscript>
 <style>
 /* ── Reset ── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1315,30 +1316,40 @@ function sfxResult() {
 }
 
 // ── BGM (user audio) ──
-const bgm = new Audio('Park%20Bird%20-%20Birb%20March.mp3');
-bgm.volume = 0.4;
+let bgm = null;
 let bgmStarted = false;
 let bgmMuted = false;
+
+// 延迟创建：首次用户点击才创建 Audio 并开始下载，避免加载时抢带宽
+function getBgm() {
+  if (!bgm) {
+    bgm = new Audio('Park%20Bird%20-%20Birb%20March.mp3');
+    bgm.volume = 0.4;
+    bgm.preload = 'none';
+  }
+  return bgm;
+}
 
 document.addEventListener('click', (e) => {
   const el = e.target.closest('button, a, .cafeteria-tab, .nav-link, .scroll-indicator, .toggle-container');
   if (!el) return;
   if (!bgmStarted) {
-    bgm.play().catch(() => {});
+    getBgm().play().catch(() => {});
     bgmStarted = true;
     document.getElementById('bgmBtn').textContent = '🎵';
   }
 });
 
 function toggleBGM() {
+  const bgmEl = getBgm();
   if (!bgmStarted) {
-    bgm.play().catch(() => {});
+    bgmEl.play().catch(() => {});
     bgmStarted = true;
     document.getElementById('bgmBtn').textContent = '🎵';
     return;
   }
   bgmMuted = !bgmMuted;
-  bgm.muted = bgmMuted;
+  bgmEl.muted = bgmMuted;
   document.getElementById('bgmBtn').textContent = bgmMuted ? '🔇' : '🎵';
 }
 
