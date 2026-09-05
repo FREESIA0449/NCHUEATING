@@ -877,6 +877,30 @@ body.no-webgpu .hero {
   color: var(--ink);
 }
 .shops-count { font-size: 0.8rem; color: var(--muted); }
+/* 餐厅分区标题（三食堂等多餐厅食堂，横跨整行网格） */
+.restaurant-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--hairline-soft);
+}
+.restaurant-header:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.restaurant-name {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.restaurant-count {
+  font-size: 0.72rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+}
 /* 网格：移动端 1 列，断点处只减列数（DESIGN.md 策略） */
 .shops-grid {
   max-width: var(--content-max); margin: 0 auto;
@@ -1464,25 +1488,61 @@ const MENU_DATA = {
     { shop: "基本大活窗口", dish: "一荤一素", price: "¥7", category: "饭", icon: "🍱", image: "images/09.jpg" },
   ],
   "二食堂": [],
-  "三食堂": [
-    { shop: "鸡扒饭", dish: "鸡扒饭套餐", price: "¥7起", category: "快餐简餐", icon: "🍗", image: "images/18.jpg" },
-    { shop: "来一份营养套餐", dish: "营养套餐", price: "¥7起", category: "快餐简餐", icon: "🍱", image: "images/19.jpg" },
-    { shop: "兰花碗·江西小炒套餐饭", dish: "江西小炒套餐", price: "¥7起", category: "快餐简餐", icon: "🥘", image: "images/20.jpg" },
-    { shop: "航语佳烤盘饭", dish: "荤素任选烤盘饭", price: "¥9.9起", category: "快餐简餐", icon: "🥘", image: "images/21.jpg" },
-    { shop: "卤小饱卤肉饭", dish: "烤鸭饭·猪扒饭·盖浇饭", price: "¥10-16", category: "快餐简餐", icon: "🍖", image: "images/22.jpg" },
-    { shop: "颠锅太爷·新式滑蛋饭", dish: "滑蛋饭", price: "¥12-16", category: "快餐简餐", icon: "🍳", image: "images/23.jpg" },
-    { shop: "隆江猪脚饭", dish: "招牌猪脚饭", price: "¥14", category: "快餐简餐", icon: "🍖", image: "images/24.jpg" },
-    { shop: "小街胡同牛杂面", dish: "牛杂汤面·拌面", price: "¥9-15", category: "粉面馄饨", icon: "🍜", image: "images/25.jpg" },
-    { shop: "元宝馄饨粉面", dish: "手工大馄饨", price: "¥12-18", category: "粉面馄饨", icon: "🥟", image: "images/26.jpg" },
-    { shop: "广东石磨肠粉", dish: "石磨肠粉", price: "¥5起", category: "粉面馄饨", icon: "🍜", image: "images/27.jpg" },
-    { shop: "π叔肥汁米线 & 莫小小水饺", dish: "肥汁米线·水饺", price: "¥9.9起", category: "粉面馄饨", icon: "🍜", image: "images/28.jpg" },
-    { shop: "哈螺先生螺蛳粉", dish: "原味螺蛳粉", price: "¥11", category: "粉面馄饨", icon: "🍜", image: "images/29.jpg" },
-    { shop: "柏乐基炸鸡汉堡", dish: "无骨炸鸡·汉堡", price: "¥9.9起", category: "炸鸡汉堡", icon: "🍔", image: "images/30.jpg" },
-    { shop: "BIGBEAR韩式炸鸡", dish: "韩式炸鸡", price: "¥9.9起", category: "炸鸡汉堡", icon: "🍗", image: "images/31.jpg" },
-    { shop: "基本大伙", dish: "早点·自选快餐", price: "¥3-6", category: "早点小吃粥品", icon: "🥟", image: "images/32.jpg" },
-    { shop: "一品营养粥", dish: "砂锅粥", price: "¥6-11", category: "早点小吃粥品", icon: "🥣", image: "images/33.jpg" },
-  ]
+  "三食堂": {
+    // 三食堂分多个餐厅：按餐厅分区展示，抽奖时全区打通
+    restaurants: [
+      {
+        name: "国潮餐厅 L1", icon: "🏮",
+        shops: [
+          { shop: "鸡扒饭", dish: "鸡扒饭套餐", price: "¥7起", category: "快餐简餐", icon: "🍗", image: "images/18.jpg" },
+          { shop: "来一份营养套餐", dish: "营养套餐", price: "¥7起", category: "快餐简餐", icon: "🍱", image: "images/19.jpg" },
+          { shop: "兰花碗·江西小炒套餐饭", dish: "江西小炒套餐", price: "¥7起", category: "快餐简餐", icon: "🥘", image: "images/20.jpg" },
+          { shop: "航语佳烤盘饭", dish: "荤素任选烤盘饭", price: "¥9.9起", category: "快餐简餐", icon: "🥘", image: "images/21.jpg" },
+          { shop: "卤小饱卤肉饭", dish: "烤鸭饭·猪扒饭·盖浇饭", price: "¥10-16", category: "快餐简餐", icon: "🍖", image: "images/22.jpg" },
+          { shop: "颠锅太爷·新式滑蛋饭", dish: "滑蛋饭", price: "¥12-16", category: "快餐简餐", icon: "🍳", image: "images/23.jpg" },
+          { shop: "隆江猪脚饭", dish: "招牌猪脚饭", price: "¥14", category: "快餐简餐", icon: "🍖", image: "images/24.jpg" },
+          { shop: "小街胡同牛杂面", dish: "牛杂汤面·拌面", price: "¥9-15", category: "粉面馄饨", icon: "🍜", image: "images/25.jpg" },
+          { shop: "元宝馄饨粉面", dish: "手工大馄饨", price: "¥12-18", category: "粉面馄饨", icon: "🥟", image: "images/26.jpg" },
+          { shop: "广东石磨肠粉", dish: "石磨肠粉", price: "¥5起", category: "粉面馄饨", icon: "🍜", image: "images/27.jpg" },
+          { shop: "π叔肥汁米线 & 莫小小水饺", dish: "肥汁米线·水饺", price: "¥9.9起", category: "粉面馄饨", icon: "🍜", image: "images/28.jpg" },
+          { shop: "哈螺先生螺蛳粉", dish: "原味螺蛳粉", price: "¥11", category: "粉面馄饨", icon: "🍜", image: "images/29.jpg" },
+          { shop: "柏乐基炸鸡汉堡", dish: "无骨炸鸡·汉堡", price: "¥9.9起", category: "炸鸡汉堡", icon: "🍔", image: "images/30.jpg" },
+          { shop: "BIGBEAR韩式炸鸡", dish: "韩式炸鸡", price: "¥9.9起", category: "炸鸡汉堡", icon: "🍗", image: "images/31.jpg" },
+          { shop: "基本大伙", dish: "早点·自选快餐", price: "¥3-6", category: "早点小吃粥品", icon: "🥟", image: "images/32.jpg" },
+          { shop: "一品营养粥", dish: "砂锅粥", price: "¥6-11", category: "早点小吃粥品", icon: "🥣", image: "images/33.jpg" },
+        ]
+      },
+      {
+        name: "国潮餐厅 L2", icon: "🏮",
+        shops: [
+          { shop: "膳小年·黄焖鸡煲", dish: "招牌黄焖鸡 · 鲍汁茄子 · 酸菜鱼｜米饭小菜汤饮免费", price: "¥15起", category: "黄焖鸡煲", icon: "🍲", image: "images/34.jpg" },
+          { shop: "黄蜀郎鸡公煲", dish: "招牌鸡公煲 · 酸菜鸡煲 · 藤椒鱼煲", price: "¥18起", category: "鸡公煲", icon: "🐔", image: "images/35.jpg" },
+          { shop: "赣味小碗菜", dish: "两素 · 一荤一素 · 一荤两素 · 二荤一素", price: "¥7起", category: "小碗菜", icon: "🥘", image: "images/36.jpg" },
+          { shop: "轻小莳", dish: "黑椒鸡胸谷物饭 · 低脂意面 · 三明治", price: "¥12起", category: "轻食", icon: "🥗", image: "images/37.jpg" },
+          { shop: "陕西面馆", dish: "汤面 · 拌面 · 手工水饺｜免费加面", price: "¥8-15", category: "面食", icon: "🍜", image: "images/38.jpg" },
+          { shop: "江西小炒", dish: "烧鹅饭 · 口水鸡 · 猪脚饭｜米饭免费续", price: "¥10起", category: "小锅现炒", icon: "🍳", image: "images/39.jpg" },
+          { shop: "学府冒菜", dish: "干拌 · 麻辣红油 · 番茄", price: "¥9.9起", category: "冒菜", icon: "🌶️", image: "images/40.jpg" },
+          { shop: "王记现捞·每日现卤", dish: "鸭翅 · 鸭脖 · 虎皮凤爪｜满10元米饭免费", price: "¥3起", category: "现捞卤味", icon: "🦆", image: "images/41.jpg" },
+          { shop: "脆麦滋·炸鸡汉堡", dish: "炸鸡 · 汉堡 · 小食套餐", price: "¥11.9起", category: "炸鸡汉堡", icon: "🍔", image: "images/42.jpg" },
+          { shop: "满意套餐饭", dish: "一荤一素 · 一荤两素 · 两荤一素", price: "¥9起", category: "套餐饭", icon: "🍱", image: "images/43.jpg" },
+          { shop: "朱家小馆·羊杂面", dish: "羊杂面 · 牛肉面 · 辣肉拌面｜免费加面", price: "¥10-14", category: "面食", icon: "🐑", image: "images/44.jpg" },
+          { shop: "兰州拉面", dish: "盖饭 · 炒饭 · 汤面 · 拌面", price: "¥9-18", category: "面食", icon: "🍜", image: "images/45.jpg" },
+          { shop: "熊记营养自选美食", dish: "菜品自选称重｜8-9元吃饱", price: "¥1.96/两", category: "自选美食", icon: "⚖️", image: "images/46.jpg" },
+        ]
+      }
+    ]
+  }
 };
+
+// ── 数据兼容：扁平店铺数组（一/二食堂）或分区结构（三食堂 { restaurants: [...] }） ──
+function getRestaurants(cafeteria) {
+  const data = MENU_DATA[cafeteria];
+  return data && data.restaurants ? data.restaurants : [{ name: null, icon: null, shops: data || [] }];
+}
+// 打平所有餐厅的店铺并带上所属餐厅名（抽奖、历史记录用）
+function getAllShops(cafeteria) {
+  return getRestaurants(cafeteria).flatMap(r => r.shops.map(s => ({ ...s, restaurant: r.name })));
+}
 
 // ============================================================================
 // 🔧 核心逻辑
@@ -1624,26 +1684,22 @@ document.addEventListener('click', (e) => {
 
   resetPicker();
   renderShopCards();
-  shopsTitle.textContent = cafeteria + ' · 全部店铺';
-  shopsCount.textContent = MENU_DATA[cafeteria].length
-    ? '共 ' + MENU_DATA[cafeteria].length + ' 家店铺'
-    : '菜单整理中';
+  updateShopsSummary(cafeteria);
   panelLabel.textContent = '🎰 抽奖区 · ' + cafeteria;
 });
 
-// ── Render Shop Cards ──
-function renderShopCards() {
-  const shops = MENU_DATA[currentCafeteria];
-  if (!shops.length) {
-    shopsGrid.innerHTML = `
-      <div class="shops-empty">
-        <div class="shops-empty-icon">🍽️</div>
-        <h3>敬请期待</h3>
-        <p>「${currentCafeteria}」菜单正在整理中，先去一食堂看看吧</p>
-      </div>`;
-    return;
-  }
-  shopsGrid.innerHTML = shops.map((s, i) => `
+// ── 标题/计数：分区食堂显示「N 个餐厅」，扁平食堂维持原样 ──
+function updateShopsSummary(cafeteria) {
+  const restaurants = getRestaurants(cafeteria);
+  const total = restaurants.reduce((n, r) => n + r.shops.length, 0);
+  shopsTitle.textContent = cafeteria + (restaurants.length > 1 ? ' · 全部餐厅' : ' · 全部店铺');
+  shopsCount.textContent = total
+    ? (restaurants.length > 1 ? `共 ${restaurants.length} 个餐厅 · ${total} 家店铺` : `共 ${total} 家店铺`)
+    : '菜单整理中';
+}
+
+function shopCardHTML(s, i) {
+  return `
     <div class="shop-card reveal" style="transition-delay: ${i * 0.05}s">
       <div class="shop-card-photo">
         ${s.image ? `<img src="${s.image}" alt="${s.shop}" loading="lazy">` : `<span class="shop-card-emoji">${s.icon}</span>`}
@@ -1656,8 +1712,35 @@ function renderShopCards() {
           <span class="category-tag">${s.category}</span>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+}
+
+// ── Render Shop Cards（多餐厅食堂按分区渲染，餐厅标题横跨整行网格） ──
+function renderShopCards() {
+  const restaurants = getRestaurants(currentCafeteria);
+  const allShops = getAllShops(currentCafeteria);
+  if (!allShops.length) {
+    shopsGrid.innerHTML = `
+      <div class="shops-empty">
+        <div class="shops-empty-icon">🍽️</div>
+        <h3>敬请期待</h3>
+        <p>「${currentCafeteria}」菜单正在整理中，先去一食堂看看吧</p>
+      </div>`;
+    return;
+  }
+  let idx = 0;
+  shopsGrid.innerHTML = restaurants
+    .filter(r => r.shops.length)
+    .map(r => {
+      const header = r.name
+        ? `<div class="restaurant-header">
+             <div class="restaurant-name">${r.icon || '📍'} ${r.name}</div>
+             <span class="restaurant-count">${r.shops.length} 家店铺</span>
+           </div>`
+        : '';
+      return header + r.shops.map(s => shopCardHTML(s, idx++)).join('');
+    })
+    .join('');
 
   document.querySelectorAll('.reveal:not(.visible)').forEach(el => revealObs.observe(el));
 }
@@ -1668,7 +1751,7 @@ function startRoll() {
     toggleEl.checked = false;
     return;
   }
-  const shops = MENU_DATA[currentCafeteria];
+  const shops = getAllShops(currentCafeteria);
   // 空食堂守卫（修复原空数组崩溃：shops[NaN] → undefined.shop）
   if (!shops.length) {
     pickerPlaceholder.textContent = '该食堂暂无店铺，敬请期待';
@@ -1705,7 +1788,9 @@ function startRoll() {
 
       // populate ticket
       ticketCafeteria.textContent = currentCafeteria;
-      ticketCafeteriaDetail.textContent = currentCafeteria;
+      ticketCafeteriaDetail.textContent = final.restaurant
+        ? currentCafeteria + ' · ' + final.restaurant
+        : currentCafeteria;
       ticketShop.textContent = final.shop;
       ticketDish.textContent = '🔥 ' + final.dish;
       ticketCategory.textContent = final.category;
@@ -1778,7 +1863,7 @@ function addHistory(shop, cafeteria) {
   const history = getHistory();
   history.unshift({
     shop: shop.shop, dish: shop.dish, price: shop.price,
-    cafeteria: cafeteria, icon: shop.icon,
+    cafeteria: cafeteria, restaurant: shop.restaurant || null, icon: shop.icon,
     time: new Date().toLocaleString('zh-CN')
   });
   localStorage.setItem('cafeteria-picker-history', JSON.stringify(history.slice(0, 30)));
@@ -1797,7 +1882,7 @@ function renderHistory() {
       <div class="history-content">
         <div class="shop">${h.icon} ${h.shop}</div>
         <div class="detail">🔥 ${h.dish} · ${h.price}</div>
-        <span class="cafeteria-tag">📍 ${h.cafeteria}</span>
+        <span class="cafeteria-tag">📍 ${h.cafeteria}${h.restaurant ? ' · ' + h.restaurant : ''}</span>
       </div>
       <div class="history-time">${h.time}</div>
     </div>
@@ -1837,7 +1922,7 @@ function init() {
   renderShopCards();
   renderHistory();
   syncCafeteriaTabs();
-  shopsCount.textContent = '共 ' + MENU_DATA["一食堂"].length + ' 家店铺';
+  updateShopsSummary("一食堂");
   panelLabel.textContent = '🎰 抽奖区 · 一食堂';
   if (revealObs) document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
   else document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
