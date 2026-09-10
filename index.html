@@ -1246,6 +1246,7 @@ body.no-scroll { overflow: hidden; }
   html { scroll-behavior: auto; }
 }
 </style>
+  <script type="module" crossorigin src="./assets/index-DYqThpW3.js"></script>
 </head>
 <body class="loading" data-view="hero">
 
@@ -1461,8 +1462,7 @@ body.no-scroll { overflow: hidden; }
     <button class="welcome-btn" id="welcomeBtn">我知道了</button>
   </div>
 </div>
-
-<script type="module" src="./src/main.js"></script>
+
 <script>
 // ============================================================================
 // 📝 在这里修改你的食堂和店铺数据！
@@ -1487,7 +1487,46 @@ const MENU_DATA = {
     { shop: "勝記卤肉饭", dish: "台湾卤肉饭", price: "¥12", category: "卤饭", icon: "🍖", image: "images/11.jpg" },
     { shop: "基本大活窗口", dish: "一荤一素", price: "¥7", category: "饭", icon: "🍱", image: "images/09.jpg" },
   ],
-  "二食堂": [],
+  "二食堂": {
+    // 二食堂按楼层分区：一楼/二楼
+    restaurants: [
+      {
+        name: "一楼", icon: "1️⃣",
+        shops: [
+          { shop: "川香粉面世家", dish: "经典葱油拌面", price: "¥4", category: "粉面", icon: "🍜", image: "images/68.jpg" },
+          { shop: "麦稻小厨牛肉饭", dish: "黑椒牛肉饭", price: "¥14", category: "牛肉饭", icon: "🍛", image: "images/69.jpg" },
+          { shop: "膳当家黄焖鸡", dish: "招牌黄焖鸡", price: "¥14", category: "黄焖鸡", icon: "🍲", image: "images/70.jpg" },
+          { shop: "大姨烧肉饭", dish: "招牌红烧肉饭", price: "¥15", category: "烧肉饭", icon: "🍖", image: "images/71.jpg" },
+          { shop: "万方圆拌粉瓦罐汤", dish: "万方圆拌粉", price: "¥4", category: "拌粉瓦罐汤", icon: "🍜", image: "images/72.jpg" },
+          { shop: "阿婆遵义羊肉粉面", dish: "羊肉汤粉", price: "¥11", category: "粉面", icon: "🐑", image: "images/73.jpg" },
+          { shop: "日新自强窗口", dish: "一荤一素套餐", price: "¥9", category: "自选快餐", icon: "🍱", image: "images/74.jpg" },
+          { shop: "五谷渔粉", dish: "五谷原味渔粉", price: "¥12", category: "渔粉", icon: "🐟", image: "images/75.jpg" },
+          { shop: "水饺广东石磨肠粉", dish: "自选水饺", price: "¥1.68/两", category: "水饺肠粉", icon: "🥟", image: "images/76.jpg" },
+          { shop: "张记营养早餐", dish: "芝士火腿煎饼", price: "¥13", category: "早餐", icon: "🥞", image: "images/77.jpg" },
+          { shop: "精品套餐饭", dish: "一荤一素套餐", price: "¥9", category: "套餐饭", icon: "🍱", image: "images/78.jpg" },
+          { shop: "江西小炒", dish: "香辣鸭腿", price: "¥6", category: "江西小炒", icon: "🍳", image: "images/79.jpg" },
+          { shop: "楚山牛蛋炒饭", dish: "虾仁鸡丁蛋炒饭", price: "¥12", category: "炒饭", icon: "🍚", image: "images/80.jpg" },
+          { shop: "练师傅粉面", dish: "肉丝拌粉", price: "¥8", category: "粉面", icon: "🍜", image: "images/81.jpg" },
+          { shop: "福建馄饨粥铺", dish: "福建鲜肉馄饨", price: "¥11", category: "馄饨粥", icon: "🥣", image: "images/82.jpg" },
+          { shop: "蜀记麻辣烫", dish: "麻辣烫", price: "¥2.08/50克", category: "麻辣烫", icon: "🌶️", image: "images/83.jpg" },
+          { shop: "广式滑蛋饭", dish: "招牌滑蛋饭", price: "¥10", category: "滑蛋饭", icon: "🍳", image: "images/84.jpg" },
+          { shop: "隆江猪脚饭", dish: "招牌猪脚饭", price: "¥14", category: "猪脚饭", icon: "🍖", image: "images/85.jpg" },
+          { shop: "九江特色小碗菜", dish: "番茄炒鸡蛋", price: "¥3", category: "小碗菜", icon: "🥘", image: "images/86.jpg" },
+        ]
+      },
+      {
+        name: "二楼", icon: "2️⃣",
+        shops: [
+          { shop: "赣味碗装菜", dish: "特色红烧肉", price: "¥6.5", category: "碗装菜", icon: "🥘", image: "images/87.jpg" },
+          { shop: "日新自强", dish: "清炒绿豆芽", price: "¥1", category: "自选快餐", icon: "🍱", image: "images/88.jpg" },
+          { shop: "福满满福鼎肉片", dish: "福鼎肉片汤（小份）", price: "¥10", category: "福鼎肉片", icon: "🍲", image: "images/89.jpg" },
+          { shop: "插花牛肉粉丝汤", dish: "招牌牛肉粉丝汤", price: "¥12", category: "粉丝汤", icon: "🍜", image: "images/90.jpg" },
+          { shop: "菜园子自选", dish: "荤素同价｜1.98元/两", price: "¥1.98/两", category: "自选快餐", icon: "🥗", image: "images/91.jpg" },
+          { shop: "泰岛蛋", dish: "槟城虾干酱鸡排蛋包饭", price: "¥13", category: "蛋包饭", icon: "🍛", image: "images/92.jpg" },
+        ]
+      }
+    ]
+  },
   "三食堂": {
     // 三食堂分多个餐厅：按餐厅分区展示，抽奖时全区打通
     restaurants: [
@@ -1565,7 +1604,7 @@ const MENU_DATA = {
   }
 };
 
-// ── 数据兼容：扁平店铺数组（一/二食堂）或分区结构（三食堂 { restaurants: [...] }） ──
+// ── 数据兼容：扁平店铺数组（一食堂）或分区结构（二/三食堂 { restaurants: [...] }） ──
 function getRestaurants(cafeteria) {
   const data = MENU_DATA[cafeteria];
   return data && data.restaurants ? data.restaurants : [{ name: null, icon: null, shops: data || [] }];
